@@ -90,8 +90,18 @@ struct Health {
 	int hp = 0;
 };
 
+struct Modifier {
+	// Probably have an enum in the future to determine the "type" of the effect which does different things
+	std::string effect = "";
+	// The value that we use to calculate the change it makes on an attack ie if the effect is times X damage we use this value for calculations
+	float effectModifier = 0.f;
+};
+
 struct Attack {
 	int atk = 0;
+	int mana = 0;
+	std::vector<Modifier> modifiers;
+	int maxModifiers = 0;
 };
 
 struct Level {
