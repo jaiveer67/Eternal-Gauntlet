@@ -86,6 +86,22 @@ struct Mesh
 	std::vector<uint16_t> vertex_indices;
 };
 
+struct Health {
+	int hp = 0;
+};
+
+struct Attack {
+	int atk = 0;
+};
+
+struct Level {
+	int lv = 0;
+};
+
+struct Image {
+	std::string img = "";
+};
+
 /**
  * The following enumerators represent global identifiers refering to graphic
  * assets. For example TEXTURE_ASSET_ID are the identifiers of each texture
