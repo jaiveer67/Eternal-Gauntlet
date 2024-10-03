@@ -23,6 +23,11 @@ public:
 	ComponentContainer<Deadly> deadlys;
 	ComponentContainer<DebugComponent> debugComponents;
 	ComponentContainer<vec3> colors;
+	ComponentContainer<Health> healths;
+	ComponentContainer<Attack> attacks;
+	ComponentContainer<Modifier> modifiers;
+	ComponentContainer<Level> levels;
+	ComponentContainer<Image> images;
 
 	// constructor that adds all containers for looping over them
 	// IMPORTANT: Don't forget to add any newly added containers!
@@ -40,6 +45,11 @@ public:
 		registry_list.push_back(&deadlys);
 		registry_list.push_back(&debugComponents);
 		registry_list.push_back(&colors);
+		registry_list.push_back(&healths);
+		registry_list.push_back(&attacks);
+		registry_list.push_back(&modifiers);
+		registry_list.push_back(&levels);
+		registry_list.push_back(&images);
 	}
 
 	void clear_all_components() {
