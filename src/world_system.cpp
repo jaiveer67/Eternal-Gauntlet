@@ -132,70 +132,16 @@ bool WorldSystem::step(float elapsed_ms_since_last_update) {
 	title_ss << "Points: " << points;
 	glfwSetWindowTitle(window, title_ss.str().c_str());
 
-	// Remove debug info from the last step
-	while (registry.debugComponents.entities.size() > 0)
-	    registry.remove_all_components_of(registry.debugComponents.entities.back());
-
-	// Removing out of screen entities
-	auto& motions_registry = registry.motions;
-
-	// Remove entities that leave the screen on the left side
-	// Iterate backwards to be able to remove without unterfering with the next object to visit
-	// (the containers exchange the last element with the current)
-	for (int i = (int)motions_registry.components.size()-1; i>=0; --i) {
-	    Motion& motion = motions_registry.components[i];
-		if (motion.position.x + abs(motion.scale.x) < 0.f) {
-			if(!registry.players.has(motions_registry.entities[i])) // don't remove the player
-				registry.remove_all_components_of(motions_registry.entities[i]);
-		}
-	}
-
-	// spawn new eels
-	next_eel_spawn -= elapsed_ms_since_last_update * current_speed;
-	if (registry.deadlys.components.size() <= MAX_NUM_EELS && next_eel_spawn < 0.f) {
-		// reset timer
-		next_eel_spawn = (EEL_SPAWN_DELAY_MS / 2) + uniform_dist(rng) * (EEL_SPAWN_DELAY_MS / 2);
-
-		// create Eel with random initial position
-        createEel(renderer, vec2(50.f + uniform_dist(rng) * (window_width_px - 100.f), 100.f));
-	}
-
-	// spawn fish
-	next_fish_spawn -= elapsed_ms_since_last_update * current_speed;
-	if (registry.eatables.components.size() <= MAX_NUM_FISH && next_fish_spawn < 0.f) {
-		// !!!  TODO A1: create new fish with createFish({0,0}), see eels above
-	}
-
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO A2: HANDLE EGG SPAWN HERE
-	// DON'T WORRY ABOUT THIS UNTIL ASSIGNMENT 2
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	applyDamageSystem();
 
 	// Processing the salmon state
 	assert(registry.screenStates.components.size() <= 1);
     ScreenState &screen = registry.screenStates.components[0];
 
     float min_counter_ms = 3000.f;
-	for (Entity entity : registry.deathTimers.entities) {
-		// progress timer
-		DeathTimer& counter = registry.deathTimers.get(entity);
-		counter.counter_ms -= elapsed_ms_since_last_update;
-		if(counter.counter_ms < min_counter_ms){
-		    min_counter_ms = counter.counter_ms;
-		}
 
-		// restart the game once the death timer expired
-		if (counter.counter_ms < 0) {
-			registry.deathTimers.remove(entity);
-			screen.darken_screen_factor = 0;
-            restart_game();
-			return true;
-		}
-	}
 	// reduce window brightness if the salmon is dying
 	screen.darken_screen_factor = 1 - min_counter_ms / 3000;
-
-	// !!! TODO A1: update LightUp timers and remove if time drops below zero, similar to the death counter
 
 	return true;
 }
@@ -205,15 +151,7 @@ void WorldSystem::restart_game() {
 	// Debugging for memory/component leaks
 	registry.list_all_components();
 	printf("Restarting\n");
-
-	// Reset the game speed
-	current_speed = 1.f;
-
-	// Remove all entities that we created
-	// All that have a motion, we could also iterate over all fish, eels, ... but that would be more cumbersome
-	while (registry.motions.entities.size() > 0)
-	    registry.remove_all_components_of(registry.motions.entities.back());
-
+	
 	// Debugging for memory/component leaks
 	registry.list_all_components();
 
@@ -221,61 +159,8 @@ void WorldSystem::restart_game() {
 	player_salmon = createSalmon(renderer, { window_width_px/2, window_height_px - 200 });
 	registry.colors.insert(player_salmon, {1, 0.8f, 0.8f});
 
-	// !! TODO A2: Enable static eggs on the ground, for reference
-	// Create eggs on the floor, use this for reference
-	/*
-	for (uint i = 0; i < 20; i++) {
-		int w, h;
-		glfwGetWindowSize(window, &w, &h);
-		float radius = 30 * (uniform_dist(rng) + 0.3f); // range 0.3 .. 1.3
-		Entity egg = createEgg({ uniform_dist(rng) * w, h - uniform_dist(rng) * 20 },
-			         { radius, radius });
-		float brightness = uniform_dist(rng) * 0.5 + 0.5;
-		registry.colors.insert(egg, { brightness, brightness, brightness});
-	}
-	*/
-}
-
-// Compute collisions between entities
-void WorldSystem::handle_collisions() {
-	// Loop over all collisions detected by the physics system
-	auto& collisionsRegistry = registry.collisions;
-	for (uint i = 0; i < collisionsRegistry.components.size(); i++) {
-		// The entity and its collider
-		Entity entity = collisionsRegistry.entities[i];
-		Entity entity_other = collisionsRegistry.components[i].other;
-
-		// for now, we are only interested in collisions that involve the salmon
-		if (registry.players.has(entity)) {
-			//Player& player = registry.players.get(entity);
-
-			// Checking Player - Deadly collisions
-			if (registry.deadlys.has(entity_other)) {
-				// initiate death unless already dying
-				if (!registry.deathTimers.has(entity)) {
-					// Scream, reset timer, and make the salmon sink
-					registry.deathTimers.emplace(entity);
-					Mix_PlayChannel(-1, salmon_dead_sound, 0);
-
-					// !!! TODO A1: change the salmon's orientation and color on death
-				}
-			}
-			// Checking Player - Eatable collisions
-			else if (registry.eatables.has(entity_other)) {
-				if (!registry.deathTimers.has(entity)) {
-					// chew, count points, and set the LightUp timer
-					registry.remove_all_components_of(entity_other);
-					Mix_PlayChannel(-1, salmon_eat_sound, 0);
-					++points;
-
-					// !!! TODO A1: create a new struct called LightUp in components.hpp and add an instance to the salmon entity by modifying the ECS registry
-				}
-			}
-		}
-	}
-
-	// Remove all collisions from this simulation step
-	registry.collisions.clear();
+	//Adding a Health component to an entity
+	registry.healths.emplace(player_salmon, Health{100}); //player_salmon is a placeholder
 }
 
 // Should the game be over ?
@@ -285,12 +170,6 @@ bool WorldSystem::is_over() const {
 
 // On key callback
 void WorldSystem::on_key(int key, int, int action, int mod) {
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO A1: HANDLE SALMON MOVEMENT HERE
-	// key is of 'type' GLFW_KEY_
-	// action can be GLFW_PRESS GLFW_RELEASE GLFW_REPEAT
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 	// Resetting game
 	if (action == GLFW_RELEASE && key == GLFW_KEY_R) {
 		int w, h;
@@ -320,11 +199,29 @@ void WorldSystem::on_key(int key, int, int action, int mod) {
 }
 
 void WorldSystem::on_mouse_move(vec2 mouse_position) {
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// TODO A1: HANDLE SALMON ROTATION HERE
-	// xpos and ypos are relative to the top-left of the window, the salmon's
-	// default facing direction is (1, 0)
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 	(vec2)mouse_position; // dummy to avoid compiler warning
+}
+
+// This function applies damage to all entities that have a Health component and have been attacked.
+void WorldSystem::applyDamageSystem() {
+    //Loop through all entities that have Health
+    for (Entity entity : registry.healths.entities) {
+        if (registry.damages.has(entity)) {
+            //Health and Damage components
+            Health& health = registry.healths.get(entity);
+            Damage& damage = registry.damages.get(entity);
+
+            health.hp -= damage.amount;
+
+            if (health.hp < 0) {
+                health.hp = 0;
+                //If the entity should die or other
+                printf("Entity %u has died!\n", (unsigned int)entity);
+            }
+
+            //Once damage is applied, remove the component
+            registry.damages.remove(entity);
+        }
+    }
 }
