@@ -7,35 +7,7 @@
 // Player component
 struct Player
 {
-
-};
-
-// anything that is deadly to the player
-struct Deadly
-{
-
-};
-
-// anything the player can eat
-struct Eatable
-{
-
-};
-
-// All data relevant to the shape and motion of entities
-struct Motion {
-	vec2 position = { 0, 0 };
-	float angle = 0;
-	vec2 velocity = { 0, 0 };
-	vec2 scale = { 10, 10 };
-};
-
-// Stucture to store collision information
-struct Collision
-{
-	// Note, the first object is stored in the ECS container.entities
-	Entity other; // the second object involved in the collision
-	Collision(Entity& other) { this->other = other; };
+	int mana = 100;
 };
 
 // Data structure for toggling debug mode
@@ -49,18 +21,6 @@ extern Debug debugging;
 struct ScreenState
 {
 	float darken_screen_factor = -1;
-};
-
-// A struct to refer to debugging graphics in the ECS
-struct DebugComponent
-{
-	// Note, an empty struct has size 1
-};
-
-// A timer that will be associated to dying salmon
-struct DeathTimer
-{
-	float counter_ms = 3000;
 };
 
 // Single Vertex Buffer element for non-textured meshes (coloured.vs.glsl & salmon.vs.glsl)
@@ -87,7 +47,12 @@ struct Mesh
 };
 
 struct Health {
-	int hp = 0;
+	int hp = 100;
+	int max_hp = 100;
+};
+
+struct Damage {
+    int amount = 0;
 };
 
 struct Modifier {
@@ -98,6 +63,8 @@ struct Modifier {
 };
 
 struct Attack {
+	int damage = 10;
+	int manaCost = 5;
 	int atk = 0;
 	int mana = 0;
 	std::vector<Modifier> modifiers;
@@ -105,7 +72,7 @@ struct Attack {
 };
 
 struct Level {
-	int lv = 0;
+	int level = 1;
 };
 
 struct Image {
